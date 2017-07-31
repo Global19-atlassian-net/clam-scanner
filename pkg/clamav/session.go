@@ -16,11 +16,13 @@ import (
 	"golang.org/x/net/context"
 )
 
+type FilterFiles map[string]struct{}
+
 // ClamdSession is the interface for a Clamav session.
 type ClamdSession interface {
 	// ScanPath scans all files under the specified path. The context object
 	// can be used to cancel the scan.
-	ScanPath(ctx context.Context, path string) error
+	ScanPath(ctx context.Context, path string, filter FilterFiles) error
 
 	// WaitTillDone blocks until responses have been received for all the
 	// files submitted for scanning.
@@ -289,7 +291,7 @@ func (s *clamdSession) log(err error) {
 // ScanPath performs a scan on a path by walking the path and submitting files
 // to clamd.  Recoverable errors are added to the scan result.  In the case of a
 // non-recoverable error, an error is returned instead.
-func (s *clamdSession) ScanPath(ctx context.Context, path string) error {
+func (s *clamdSession) ScanPath(ctx context.Context, rootPath string, filter FilterFiles) error {
 	walkFn := func(path string, fileInfo os.FileInfo, err error) error {
 		if err != nil {
 			s.log(err)
@@ -304,6 +306,12 @@ func (s *clamdSession) ScanPath(ctx context.Context, path string) error {
 			}
 		}
 
+		if filter != nil {
+			if _, ok := filter[path]; !ok {
+				return nil
+			}
+		}
+
 		if !fileInfo.Mode().IsRegular() {
 			return nil
 		}
@@ -315,7 +323,7 @@ func (s *clamdSession) ScanPath(ctx context.Context, path string) error {
 		return nil
 	}
 
-	return filepath.Walk(path, walkFn)
+	return filepath.Walk(rootPath, walkFn)
 }
 
 // scanFile submits a file to clamd for scanning.
