@@ -42,7 +42,7 @@ func (scanner *clamScanner) Scan() ([]byte, error) {
 		return nil, err
 	}
 
-	err = ses.ScanPath(context.Background(), scanner.path)
+	err = ses.ScanPath(context.Background(), scanner.path, nil)
 	if err != nil {
 		ses.Close()
 		return nil, err
